@@ -6,7 +6,7 @@ import { useDevice } from '@/context/DeviceContext';
 import { useState } from 'react';
 
 export default function DeviceDetail() {
-  const { device, unpair } = useDevice();
+  const { device, deviceInfo, unpair } = useDevice();
   
   // Mock humidity history
   const [data, _setData] = useState(
@@ -17,7 +17,7 @@ export default function DeviceDetail() {
   );
   
   const [targetHumidity, setTargetHumidity] = useState(50);
-  
+
   if (!device) return null;
 
   return (
@@ -29,7 +29,7 @@ export default function DeviceDetail() {
         </Button>
       </Box>
       <Typography level="body-sm" sx={{ mb: 2 }}>
-        Temp: {device.temperature}°C · Pressure: {device.pressure} hPa
+        Temp: {deviceInfo.temperature}°C · Pressure: {deviceInfo.pressure} hPa
       </Typography>
 
       <Card sx={{ mb: 3 }}>

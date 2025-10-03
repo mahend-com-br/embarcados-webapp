@@ -15,19 +15,30 @@ import { useEffect, useState } from 'react';
 export default function DeviceList() {
   const { pair } = useDevice();
   const [loading, setLoading] = useState(false);
-  const [devices, setDevices] = useState<
-    { id: string; name: string; temperature: number; pressure: number }[]
-  >([]);
+  const [devices, setDevices] = useState<BluetoothDevice[]>([]);
 
   const fetchDevices = () => {
     setLoading(true);
-    setTimeout(() => {
-      setDevices([
-        { id: '1', name: 'Humidifier Living Room', temperature: 23, pressure: 1012 },
-        { id: '2', name: 'Humidifier Bedroom', temperature: 21, pressure: 1010 },
-      ]);
+
+    if (!navigator.bluetooth) {
+      console.error('Web Bluetooth API is not available in this browser.');
       setLoading(false);
-    }, 1000);
+      return;
+    }
+
+    navigator.bluetooth.requestDevice(
+      // {
+      // filters: [{ services: ['battery_service'] }],
+      // optionalServices: ['device_information'],
+      // }
+    ).then((device) => {
+      setDevices((prev) => {
+        // Prevent duplicates
+        if (prev.find((d) => d.id === device.id)) return prev;
+        return [...prev, device];
+      });
+    }).catch((err) => console.error(err))
+    .finally(() => setLoading(false));
   };
 
   useEffect(() => {

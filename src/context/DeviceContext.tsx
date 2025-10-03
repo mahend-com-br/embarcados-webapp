@@ -2,7 +2,7 @@
 
 import { createContext, ReactNode, useContext, useState } from 'react';
 
-type Device = {
+type DeviceInfo = {
   id: string;
   name: string;
   temperature: number;
@@ -10,21 +10,29 @@ type Device = {
 };
 
 type DeviceContextType = {
-  device: Device | null;
-  pair: (device: Device) => void;
+  device: BluetoothDevice | null;
+  deviceInfo: DeviceInfo;
+  pair: (device: BluetoothDevice) => void;
   unpair: () => void;
 };
 
 const DeviceContext = createContext<DeviceContextType | undefined>(undefined);
 
 export function DeviceProvider({ children }: { children: ReactNode }) {
-  const [device, setDevice] = useState<Device | null>(null);
+  const [device, setDevice] = useState<BluetoothDevice | null>(null);
 
-  const pair = (dev: Device) => setDevice(dev);
+  const pair = (dev: BluetoothDevice) => setDevice(dev);
   const unpair = () => setDevice(null);
 
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo>({
+    id: '',
+    name: '',
+    temperature: 23.15,
+    pressure: 1012.5,
+  });
+
   return (
-    <DeviceContext.Provider value={{ device, pair, unpair }}>
+    <DeviceContext.Provider value={{ device, pair, unpair, deviceInfo }}>
       {children}
     </DeviceContext.Provider>
   );
