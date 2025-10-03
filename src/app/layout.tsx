@@ -1,19 +1,19 @@
 'use client';
 
-import * as React from 'react';
+import { ReactNode } from 'react';
 import { CssVarsProvider } from '@mui/joy/styles';
 import CssBaseline from '@mui/joy/CssBaseline';
+import { DeviceProvider } from '@/context/DeviceContext';
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      </head>
       <body>
         <CssVarsProvider>
           <CssBaseline />
-          {children}
+          <DeviceProvider>
+            {children}
+          </DeviceProvider>
         </CssVarsProvider>
       </body>
     </html>
