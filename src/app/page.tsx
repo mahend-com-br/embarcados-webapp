@@ -16,7 +16,7 @@ export default function HomePage() {
       }}
     >
       <Typography level="h1" sx={{ fontSize: '2rem', mb: 2, textAlign: 'center' }}>
-        🚀 Welcome to Joy UI + Next.js
+        Joy UI + Next.js
       </Typography>
 
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
