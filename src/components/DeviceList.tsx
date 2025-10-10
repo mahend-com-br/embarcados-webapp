@@ -19,6 +19,7 @@ export default function DeviceList() {
 
     if (!navigator.bluetooth) {
       console.error('Web Bluetooth API indisponível.');
+      setError('Web Bluetooth API indisponível.')
       setLoading(false);
       return;
     }
