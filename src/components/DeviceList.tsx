@@ -12,6 +12,7 @@ import { useState } from 'react';
 export default function DeviceList() {
   const { pair } = useDevice();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const fetchDevices = () => {
     setLoading(true);
@@ -29,7 +30,10 @@ export default function DeviceList() {
     ).then((device) => {
       console.log(device);
       pair(device);
-    }).catch((err) => console.error(err))
+    }).catch((err) => {
+      setError(String(err));
+      console.error(err);
+    })
       .finally(() => setLoading(false));
   };
 
@@ -42,6 +46,12 @@ export default function DeviceList() {
       <Button onClick={fetchDevices} fullWidth variant="solid" sx={{ mb: 2 }}>
         {loading ? <CircularProgress size="sm" /> : 'Selecionar Dispositivo'}
       </Button>
+
+      {
+        error && <Typography level="body-md" sx={{ mb: 2, textAlign: 'center' }}>
+        Ocorreu um erro: { error }
+      </Typography>
+      }
     </Sheet>
   );
 }
