@@ -3,7 +3,12 @@
 import { Typography, Sheet, Box, Slider, Card, CardContent, Button, CircularProgress } from '@mui/joy';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useDevice } from '@/context/DeviceContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+
+const HUMIDITY_SENSOR_SERVICE_UUID = '000000ff-0000-1000-8000-00805f9b34fb';
+const HUMIDITY_SENSOR_CHARACTERISTIC_UUID = '0000ff03-0000-1000-8000-00805f9b34fb';
+const TARGET_HUMIDITY_CHARACTERISTIC_UUID = '0000ff01-0000-1000-8000-00805f9b34fb';
+
 
 interface HumidityPoint {
   time: string;
@@ -18,34 +23,74 @@ export default function DeviceDetail() {
   const [humidityData, setHumidityData] = useState<HumidityPoint[]>([]);
   const [targetHumidity, setTargetHumidity] = useState<number>(0);
 
+  const sensorCharRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
+  const targetHumidityCharRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+
   useEffect(() => {
     if (!device) return;
-
-    setTargetHumidity(45); // Mock initial targetHumidity reading
-  }, [device])
-
-  useEffect(() => {
-    if (!device) return;
-
-    const readSensors = () => {
-      // Mock next readings based on previous readings
-      setPressure((previousPressure) => Math.round(100 * (previousPressure || 1000) * (1 + ((Math.random() - 0.5) * 0.1))) / 100);
-      setTemperature((previousTemperature) => Math.round(100 * (previousTemperature || 20) * (1 + ((Math.random() - 0.5) * 0.1))) / 100);
-
-      const newHumidity = 40 + Math.round(Math.random() * 20);
-      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', });
-
-      setHumidityData((prev) => {
-        const updated = [...prev, { time: now, humidity: newHumidity }];
-        return updated;
-      });
+    const connectGatt = async () => {
+      const server = await device.gatt!.connect();
+        const service = await server.getPrimaryService(HUMIDITY_SENSOR_SERVICE_UUID);
+        
+        sensorCharRef.current = await service.getCharacteristic(HUMIDITY_SENSOR_CHARACTERISTIC_UUID);
+        
+        console.log('Starting to poll sensor data every 2 seconds...');
+        pollIntervalRef.current = setInterval(async () => {
+            try {
+                if (sensorCharRef.current) {
+                    const value = await sensorCharRef.current.readValue();
+                    handleSensorData(value);
+                }
+            } catch (pollError) {
+                console.error("Polling failed:", pollError);
+            }
+        }, 500);
     };
 
-    readSensors(); // immediately do first reading
-    const interval = setInterval(readSensors, 60 * 1000); // read every minute
+    connectGatt();
+    setPressure(1);
+    setTemperature(1);
 
-    return () => clearInterval(interval);
-  }, [device]);
+    const handleSensorData = (value: DataView) => {
+    if (!value) return;
+
+    const humidity = value.getUint8(0);
+
+    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' ,second: '2-digit'});
+    setHumidityData((prev) => {
+      const updated = [...prev, { time: now, humidity: humidity }];
+      return updated;
+    });
+    //setHumidityData((prev) => [...prev, { time: now, humidity: humidity }].slice(-30));
+  };
+
+    //setTargetHumidity(45); // Mock initial targetHumidity reading
+  }, [device])
+
+  // useEffect(() => {
+  //   if (!device) return;
+
+  //   const readSensors = () => {
+  //     // Mock next readings based on previous readings
+  //     setPressure((previousPressure) => Math.round(100 * (previousPressure || 1000) * (1 + ((Math.random() - 0.5) * 0.1))) / 100);
+  //     setTemperature((previousTemperature) => Math.round(100 * (previousTemperature || 20) * (1 + ((Math.random() - 0.5) * 0.1))) / 100);
+
+  //     const newHumidity = 40 + Math.round(Math.random() * 20);
+  //     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', });
+
+  //     setHumidityData((prev) => {
+  //       const updated = [...prev, { time: now, humidity: newHumidity }];
+  //       return updated;
+  //     });
+  //   };
+
+  //   readSensors(); // immediately do first reading
+  //   const interval = setInterval(readSensors, 60 * 1000); // read every minute
+
+  //   return () => clearInterval(interval);
+  // }, [device]);
 
   if (!device) return null;
 
