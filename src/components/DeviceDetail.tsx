@@ -46,24 +46,25 @@ export default function DeviceDetail() {
             } catch (pollError) {
                 console.error("Polling failed:", pollError);
             }
-        }, 500);
+        }, 2000);
     };
 
     connectGatt();
-    setPressure(1);
-    setTemperature(1);
 
     const handleSensorData = (value: DataView) => {
     if (!value) return;
-
-    const humidity = value.getUint8(0);
+    
+    const temperature = value.getFloat32(0,true);
+    const humidity = value.getFloat32(4,true);
+    const pressure = value.getFloat32(8,true);
+    setPressure(pressure);
+    setTemperature(temperature);
 
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' ,second: '2-digit'});
     setHumidityData((prev) => {
-      const updated = [...prev, { time: now, humidity: humidity }];
+      const updated = [...prev, { time: now, humidity: Math.round(10000 * humidity) / 100 }];
       return updated;
     });
-    //setHumidityData((prev) => [...prev, { time: now, humidity: humidity }].slice(-30));
   };
 
     //setTargetHumidity(45); // Mock initial targetHumidity reading
@@ -107,7 +108,7 @@ export default function DeviceDetail() {
             </Button>
           </Box>
           <Typography level="body-sm" sx={{ mb: 2 }}>
-            Temperatura: {temperature}°C · Pressão: {pressure} hPa
+            Temperatura: {Math.round(temperature * 100) / 100}°C · Pressão: {Math.round(pressure * 100) / 100} hPa
           </Typography>
 
           <Card sx={{ mb: 3 }}>
