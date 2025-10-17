@@ -25,7 +25,8 @@ export default function DeviceList() {
     }
 
     navigator.bluetooth.requestDevice({
-      acceptAllDevices: true,
+      // acceptAllDevices: true,
+      filters: [{ services: ['000000ff-0000-1000-8000-00805f9b34fb'] }],
       // filters: [{ name: 'ESP_GATTS_DEMO' }], // TODO Add service-based filtering
     }
     ).then((device) => {
