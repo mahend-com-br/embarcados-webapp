@@ -21,7 +21,7 @@ export default function DeviceDetail() {
   const [pressure, setPressure] = useState<number>();
   const [temperature, setTemperature] = useState<number>();
   const [humidityData, setHumidityData] = useState<HumidityPoint[]>([]);
-  const [targetHumidity, setTargetHumidity] = useState<number>(0);
+  const [targetHumidity, setTargetHumidity] = useState<number>(70);
 
   const sensorCharRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
   const targetHumidityCharRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
@@ -30,70 +30,81 @@ export default function DeviceDetail() {
 
   useEffect(() => {
     if (!device) return;
+
+    let gattServer: BluetoothRemoteGATTServer | null = null;
+
+    const writeTarget = async (valueToWrite: number = targetHumidity) => {
+      if (!targetHumidityCharRef.current) return; 
+      try {
+        const payload = new Uint8Array([Math.round(valueToWrite)]);
+        await targetHumidityCharRef.current.writeValue(payload);
+      } catch (err) {
+        console.error('Failed to write target humidity:', err);
+      }
+    };
+
+    const handleSensorData = (value: DataView) => {
+      if (!value) return;
+
+      const temperature = value.getFloat32(0, true);
+      const humidity = value.getFloat32(4, true);
+      const pressure = value.getFloat32(8, true);
+      setPressure(pressure);
+      setTemperature(temperature);
+
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setHumidityData((prev) => {
+        const updated = [...prev, { time: now, humidity: Math.round(100 * humidity) / 100 }];
+        return updated.slice(-30);
+      });
+    };
+
     const connectGatt = async () => {
-      const server = await device.gatt!.connect();
-        const service = await server.getPrimaryService(HUMIDITY_SENSOR_SERVICE_UUID);
-        
+      try {
+        gattServer = await device.gatt!.connect();
+        const service = await gattServer.getPrimaryService(HUMIDITY_SENSOR_SERVICE_UUID);
+
         sensorCharRef.current = await service.getCharacteristic(HUMIDITY_SENSOR_CHARACTERISTIC_UUID);
-        
-        console.log('Starting to poll sensor data every 2 seconds...');
-        pollIntervalRef.current = setInterval(async () => {
-            try {
-                if (sensorCharRef.current) {
-                    const value = await sensorCharRef.current.readValue();
-                    handleSensorData(value);
-                }
-            } catch (pollError) {
-                console.error("Polling failed:", pollError);
+        targetHumidityCharRef.current = await service.getCharacteristic(TARGET_HUMIDITY_CHARACTERISTIC_UUID);
+
+        // write current target once the characteristic is available
+        await writeTarget();
+
+        const handlePolling = async () => {
+          try {
+            if (sensorCharRef.current) {
+              const value = await sensorCharRef.current.readValue();
+              handleSensorData(value);
             }
-        }, 20000);
+          } catch (pollError) {
+            console.error('Polling failed:', pollError);
+          }
+        };
+
+        // initial read and periodic polling
+        await handlePolling();
+        pollIntervalRef.current = setInterval(handlePolling, 20000);
+      } catch (err) {
+        console.error('Failed to connect GATT:', err);
+      }
     };
 
     connectGatt();
 
-    const handleSensorData = (value: DataView) => {
-    if (!value) return;
-    
-    const temperature = value.getFloat32(0,true);
-    const humidity = value.getFloat32(4,true);
-    const pressure = value.getFloat32(8,true);
-    setPressure(pressure);
-    setTemperature(temperature);
-
-    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' ,second: '2-digit'});
-    setHumidityData((prev) => {
-      const updated = [...prev, { time: now, humidity: Math.round(100 * humidity) / 100 }];
-      return updated;
-    });
-  };
-
-    //setTargetHumidity(45); // Mock initial targetHumidity reading
-  }, [device])
-
-  // useEffect(() => {
-  //   if (!device) return;
-
-  //   const readSensors = () => {
-  //     // Mock next readings based on previous readings
-  //     setPressure((previousPressure) => Math.round(100 * (previousPressure || 1000) * (1 + ((Math.random() - 0.5) * 0.1))) / 100);
-  //     setTemperature((previousTemperature) => Math.round(100 * (previousTemperature || 20) * (1 + ((Math.random() - 0.5) * 0.1))) / 100);
-
-  //     const newHumidity = 40 + Math.round(Math.random() * 20);
-  //     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', });
-
-  //     setHumidityData((prev) => {
-  //       const updated = [...prev, { time: now, humidity: newHumidity }];
-  //       return updated;
-  //     });
-  //   };
-
-  //   readSensors(); // immediately do first reading
-  //   const interval = setInterval(readSensors, 60 * 1000); // read every minute
-
-  //   return () => clearInterval(interval);
-  // }, [device]);
-
-  if (!device) return null;
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      try {
+        if (gattServer && gattServer.connected) gattServer.disconnect();
+      } catch (err) {
+        console.warn('Error while disconnecting GATT server:', err);
+      }
+      sensorCharRef.current = null;
+      targetHumidityCharRef.current = null;
+    };
+  }, [device]);
 
   const hasData = pressure && temperature;
 
@@ -137,8 +148,20 @@ export default function DeviceDetail() {
               <Slider
                 value={targetHumidity}
                 onChange={(_, value) => setTargetHumidity(value as number)}
-                min={30}
-                max={70}
+                onChangeCommitted={(_, value) => {
+                  if (!targetHumidityCharRef.current) return;
+                  const write = async () => {
+                    try {
+                      const payload = new Uint8Array([Math.round(value as number)]);
+                      await targetHumidityCharRef.current!.writeValue(payload);
+                    } catch (err) {
+                      console.error('Failed to write target humidity on change:', err);
+                    }
+                  };
+                  write();
+                }}
+                min={0}
+                max={100}
                 step={1}
                 defaultValue={0}
               />
