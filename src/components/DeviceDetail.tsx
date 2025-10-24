@@ -113,7 +113,7 @@ export default function DeviceDetail() {
       hasData
         ? <>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-            <Typography level="h3">{device.name}</Typography>
+            <Typography level="h3">{device?.name || "Dispositivo"}</Typography>
             <Button size="sm" color="danger" onClick={unpair}>
               Desconectar
             </Button>
