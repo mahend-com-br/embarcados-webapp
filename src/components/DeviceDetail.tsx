@@ -46,7 +46,7 @@ export default function DeviceDetail() {
             } catch (pollError) {
                 console.error("Polling failed:", pollError);
             }
-        }, 2000);
+        }, 20000);
     };
 
     connectGatt();
@@ -62,7 +62,7 @@ export default function DeviceDetail() {
 
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' ,second: '2-digit'});
     setHumidityData((prev) => {
-      const updated = [...prev, { time: now, humidity: Math.round(10000 * humidity) / 100 }];
+      const updated = [...prev, { time: now, humidity: Math.round(100 * humidity) / 100 }];
       return updated;
     });
   };
